@@ -638,7 +638,7 @@ window.addEventListener('DOMContentLoaded', () => {
             panner.pan.setValueAtTime((Math.random() - 0.5) * 2, time);
 
             const gain = this.ctx.createGain();
-            const peakGain = 0.15 * 0.6; // 60% volume
+            const peakGain = 0.15 * 0.6 * 0.5; // 60% volume, then halved
             gain.gain.setValueAtTime(0, time);
             gain.gain.linearRampToValueAtTime(peakGain, time + 1.5); // Slow attack
             gain.gain.setValueAtTime(peakGain, time + duration - 2.0);
@@ -708,7 +708,7 @@ window.addEventListener('DOMContentLoaded', () => {
             gain.gain.setValueAtTime(0, time); // Start at 0 base gain
             lfoGain.connect(gain.gain); // LFO controls the gain value
 
-            const peakGain = 0.15 * 0.5; // 50% volume
+            const peakGain = 0.15 * 0.5 * 0.5; // 50% volume, then halved
             // Envelope on top
             gain.gain.linearRampToValueAtTime(peakGain, time + 0.5);
             gain.gain.setValueAtTime(peakGain, time + duration - 0.5);
