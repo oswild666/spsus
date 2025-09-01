@@ -638,7 +638,7 @@ window.addEventListener('DOMContentLoaded', () => {
             panner.pan.setValueAtTime((Math.random() - 0.5) * 2, time);
 
             const gain = this.ctx.createGain();
-            const peakGain = 0.15 * 0.6 * 0.5; // 60% volume, then halved
+            const peakGain = 0.15 * 0.5; // Set to 50% of original volume
             gain.gain.setValueAtTime(0, time);
             gain.gain.linearRampToValueAtTime(peakGain, time + 1.5); // Slow attack
             gain.gain.setValueAtTime(peakGain, time + duration - 2.0);
@@ -695,28 +695,35 @@ window.addEventListener('DOMContentLoaded', () => {
             highpass.type = 'highpass';
             highpass.frequency.setValueAtTime(1000, time); // Remove low rumble
 
-            // LFO to modulate gain for "wind" effect
+            // VCA 1: Main envelope
+            const envelopeGain = this.ctx.createGain();
+            const peakGain = 0.15 * 0.5; // Set to 50% of original volume
+            envelopeGain.gain.setValueAtTime(0, time);
+            envelopeGain.gain.linearRampToValueAtTime(peakGain, time + 0.5);
+            envelopeGain.gain.setValueAtTime(peakGain, time + duration - 0.5);
+            envelopeGain.gain.linearRampToValueAtTime(0, time + duration);
+
+            // VCA 2: LFO for wind-like modulation (tremolo)
+            const tremolo = this.ctx.createGain();
             const lfo = this.ctx.createOscillator();
             lfo.type = 'sine';
-            lfo.frequency.setValueAtTime(Math.random() * 0.5 + 0.1, time);
+            // A slow frequency for "wind"
+            lfo.frequency.setValueAtTime(0.2 + Math.random() * 0.3, time);
 
-            const lfoGain = this.ctx.createGain();
-            lfoGain.gain.setValueAtTime(0.1, time); // Amount of gain modulation
-            lfo.connect(lfoGain);
+            // The LFO output is [-1, 1]. We map this to a gain multiplier.
+            const lfoDepth = this.ctx.createGain();
+            lfoDepth.gain.value = 0.25; // So output is [-0.25, 0.25]
 
-            const gain = this.ctx.createGain();
-            gain.gain.setValueAtTime(0, time); // Start at 0 base gain
-            lfoGain.connect(gain.gain); // LFO controls the gain value
+            // The baseline gain is set by setValueAtTime. The LFO is added to this baseline.
+            tremolo.gain.setValueAtTime(1.0, time); // Baseline of 1 (no change)
+            lfo.connect(lfoDepth);
+            lfoDepth.connect(tremolo.gain); // Add LFO to baseline, making gain flutter around 1.0
 
-            const peakGain = 0.15 * 0.5 * 0.5; // 50% volume, then halved
-            // Envelope on top
-            gain.gain.linearRampToValueAtTime(peakGain, time + 0.5);
-            gain.gain.setValueAtTime(peakGain, time + duration - 0.5);
-            gain.gain.linearRampToValueAtTime(0, time + duration);
-
+            // Routing: noise -> highpass -> envelope -> tremolo -> limiter
             noise.connect(highpass);
-            highpass.connect(gain);
-            gain.connect(limiter);
+            highpass.connect(envelopeGain);
+            envelopeGain.connect(tremolo);
+            tremolo.connect(limiter);
 
             noise.start(time);
             lfo.start(time);
