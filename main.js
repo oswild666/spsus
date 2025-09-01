@@ -401,6 +401,8 @@ window.addEventListener('DOMContentLoaded', () => {
     class SoundManager {
         constructor(audioCtx) {
             this.ctx = audioCtx;
+
+            // Master bus
             this.masterLimiter = this.ctx.createDynamicsCompressor();
             this.masterLimiter.threshold.setValueAtTime(-10, this.ctx.currentTime);
             this.masterLimiter.knee.setValueAtTime(0, this.ctx.currentTime);
@@ -409,11 +411,26 @@ window.addEventListener('DOMContentLoaded', () => {
             this.masterLimiter.release.setValueAtTime(0.1, this.ctx.currentTime);
             this.masterLimiter.connect(this.ctx.destination);
 
+            // Sub-bus for characters 3 & 4
+            this.subLimiter = this.ctx.createDynamicsCompressor();
+            this.subLimiter.threshold.setValueAtTime(-10, this.ctx.currentTime); // Same settings as master
+            this.subLimiter.knee.setValueAtTime(0, this.ctx.currentTime);
+            this.subLimiter.ratio.setValueAtTime(20, this.ctx.currentTime);
+            this.subLimiter.attack.setValueAtTime(0.001, this.ctx.currentTime);
+            this.subLimiter.release.setValueAtTime(0.1, this.ctx.currentTime);
+
+            this.subGain = this.ctx.createGain();
+            this.subGain.gain.value = 0.5; // 50% output volume for the sub-bus
+
+            this.subLimiter.connect(this.subGain);
+            this.subGain.connect(this.masterLimiter);
+
+            // Route synths to the correct bus
             this.synths = [
-                new JawHarpSynth(this.ctx, this.masterLimiter),
-                new ThroatSynth(this.ctx, this.masterLimiter),
-                new AmbientPadSynth(this.ctx, this.masterLimiter),
-                new NatureSynth(this.ctx, this.masterLimiter)
+                new JawHarpSynth(this.ctx, this.masterLimiter), // Char 1 -> Master
+                new ThroatSynth(this.ctx, this.masterLimiter), // Char 2 -> Master
+                new AmbientPadSynth(this.ctx, this.subLimiter),  // Char 3 -> Sub-bus
+                new NatureSynth(this.ctx, this.subLimiter)     // Char 4 -> Sub-bus
             ];
 
             this.isCycleActive = false;
