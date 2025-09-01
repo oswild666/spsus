@@ -165,43 +165,55 @@ window.addEventListener('DOMContentLoaded', () => {
         }
 
         drawBody(x, y) {
-            const bodyWidth = this.width * 0.8;
+            const bodyWidth = this.width * 0.9; // Slightly wider for a more robust base
             const bodyHeight = this.height * 0.9;
-            const kimonoX = x - bodyWidth / 2;
-            const kimonoY = y;
+            const bodyBottomY = y + bodyHeight;
 
-            // Kimono (body)
+            // Create a path for the monk shape
+            ctx.beginPath();
+            ctx.moveTo(x, y + 20); // Start at the neck, slightly lower
+            // Left side (shoulder to base)
+            ctx.quadraticCurveTo(x - bodyWidth * 0.5, y + bodyHeight * 0.4, x - bodyWidth * 0.5, bodyBottomY);
+            // Bottom line
+            ctx.lineTo(x + bodyWidth * 0.5, bodyBottomY);
+            // Right side (base to shoulder)
+            ctx.quadraticCurveTo(x + bodyWidth * 0.5, y + bodyHeight * 0.4, x, y + 20);
+            ctx.closePath();
+
+            // Save context before applying patterns
+            ctx.save();
+
+            // --- Fill Style Logic ---
             if (this.id === 1) {
                 ctx.fillStyle = '#1a1a1a'; // Dark grey/black for Gucci
             } else {
                 ctx.fillStyle = `hsl(${(this.id * 90)}, 80%, 50%)`;
             }
-            ctx.fillRect(kimonoX, kimonoY, bodyWidth, bodyHeight);
+            ctx.fill(); // Fill the main monk shape
 
-            // "Psychedelic patterns" or Gucci logo
+            // Clip to the new path shape to draw patterns inside
+            ctx.clip();
+
+            // --- Pattern Drawing Logic ---
             if (this.id === 1 && isGucciLogoLoaded) {
                 // Draw Gucci pattern
-                ctx.save();
-                ctx.rect(kimonoX, kimonoY, bodyWidth, bodyHeight);
-                ctx.clip(); // Clip to the kimono area
-                for (let row = -10; row < bodyHeight; row += 25) {
-                    for (let col = -20; col < bodyWidth; col += 55) {
-                        ctx.drawImage(gucciLogoImage, kimonoX + col, kimonoY + row);
+                for (let row = 0; row < bodyHeight + 20; row += 25) {
+                    for (let col = -bodyWidth / 2; col < bodyWidth / 2; col += 55) {
+                        ctx.drawImage(gucciLogoImage, x + col, y + row);
                     }
                 }
-                ctx.restore();
             } else if (this.id !== 1) {
-                for (let i = 0; i < 5; i++) {
+                // Draw psychedelic patterns
+                for (let i = 0; i < 8; i++) { // More patterns for the larger shape
                     ctx.fillStyle = `hsl(${(this.id * 90 + i * 40) % 360}, 100%, 70%)`;
                     ctx.beginPath();
-                    ctx.arc(x + (Math.random() - 0.5) * bodyWidth * 0.7, y + Math.random() * bodyHeight, Math.random() * 5 + 2, 0, Math.PI * 2);
+                    ctx.arc(x + (Math.random() - 0.5) * bodyWidth, y + bodyHeight * Math.random(), Math.random() * 8 + 3, 0, Math.PI * 2);
                     ctx.fill();
                 }
             }
 
-            // Clasped hands
-            ctx.fillStyle = '#333';
-            ctx.fillRect(x - bodyWidth * 0.2, y + bodyHeight * 0.3, bodyWidth * 0.4, bodyHeight * 0.2);
+            // Restore context to remove the clip
+            ctx.restore();
         }
 
         drawHead(x, y) {
@@ -696,7 +708,7 @@ window.addEventListener('DOMContentLoaded', () => {
             gain.gain.setValueAtTime(0, time); // Start at 0 base gain
             lfoGain.connect(gain.gain); // LFO controls the gain value
 
-            const peakGain = 0.15 * 0.6; // 60% volume
+            const peakGain = 0.15 * 0.5; // 50% volume
             // Envelope on top
             gain.gain.linearRampToValueAtTime(peakGain, time + 0.5);
             gain.gain.setValueAtTime(peakGain, time + duration - 0.5);
