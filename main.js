@@ -420,7 +420,7 @@ window.addEventListener('DOMContentLoaded', () => {
             this.subLimiter.release.setValueAtTime(0.1, this.ctx.currentTime);
 
             this.subGain = this.ctx.createGain();
-            this.subGain.gain.value = 0.5; // 50% output volume for the sub-bus
+            this.subGain.gain.value = 0.25; // 50% output volume, then halved again
 
             this.subLimiter.connect(this.subGain);
             this.subGain.connect(this.masterLimiter);
@@ -655,11 +655,17 @@ window.addEventListener('DOMContentLoaded', () => {
             panner.pan.setValueAtTime((Math.random() - 0.5) * 2, time);
 
             const gain = this.ctx.createGain();
-            const peakGain = 0.15 * 0.5; // Set to 50% of original volume
+            // This synth's volume is now controlled by the sub-bus gain, so we can keep this at a clear 1.0
+            const peakGain = 1.0;
             gain.gain.setValueAtTime(0, time);
             gain.gain.linearRampToValueAtTime(peakGain, time + 1.5); // Slow attack
             gain.gain.setValueAtTime(peakGain, time + duration - 2.0);
             gain.gain.linearRampToValueAtTime(0, time + duration + 3.0); // Long release
+
+            // Highpass filter to remove bass
+            const highpass = this.ctx.createBiquadFilter();
+            highpass.type = 'highpass';
+            highpass.frequency.setValueAtTime(200, time); // Cutoff at 200Hz
 
             // Lowpass filter for occasional sweep
             const lowpass = this.ctx.createBiquadFilter();
@@ -679,12 +685,14 @@ window.addEventListener('DOMContentLoaded', () => {
                 osc.frequency.setValueAtTime(noteFreq, time);
                 osc.detune.setValueAtTime((Math.random() - 0.5) * 10, time); // Detune for richness
 
-                osc.connect(lowpass);
+                osc.connect(highpass); // Connect to highpass first
                 osc.start(time);
                 osc.stop(time + duration + 3.5);
                 this.activeNodes.push(osc);
             });
 
+            // New routing: highpass -> lowpass -> panner -> gain -> limiter
+            highpass.connect(lowpass);
             lowpass.connect(panner);
             panner.connect(gain);
             gain.connect(limiter);
@@ -714,7 +722,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
             // VCA 1: Main envelope
             const envelopeGain = this.ctx.createGain();
-            const peakGain = 0.15 * 0.5; // Set to 50% of original volume
+            // This synth's volume is now controlled by the sub-bus gain, so we can keep this at a clear 1.0
+            const peakGain = 1.0;
             envelopeGain.gain.setValueAtTime(0, time);
             envelopeGain.gain.linearRampToValueAtTime(peakGain, time + 0.5);
             envelopeGain.gain.setValueAtTime(peakGain, time + duration - 0.5);
