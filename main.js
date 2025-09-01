@@ -45,35 +45,80 @@ window.addEventListener('DOMContentLoaded', () => {
     };
     backgroundImage.src = backgroundImageUrl;
 
+    const gucciLogoImage = new Image();
+    let isGucciLogoLoaded = false;
+    const gucciSvgString = `<svg xmlns="http://www.w3.org/2000/svg" width="50" height="25" viewBox="0 0 100 50"><path d="M75,25 a20,20 0 1,0 0,1 M60,25 h-10" fill="none" stroke="#D4AF37" stroke-width="8"/><path d="M25,25 a20,20 0 1,1 0,-1 M40,25 h10" fill="none" stroke="#D4AF37" stroke-width="8"/></svg>`;
+    gucciLogoImage.onload = () => {
+        isGucciLogoLoaded = true;
+        console.log("Gucci logo loaded.");
+    };
+    gucciLogoImage.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(gucciSvgString)}`;
+
 
     // --- Graphics and Characters ---
 
     // Simple particle system for psychedelic effect
     let particles = [];
     function initParticles() {
-        for (let i = 0; i < 50; i++) {
+        const numParticles = 75; // Increased particle count for more density
+        for (let i = 0; i < numParticles; i++) {
             particles.push({
                 x: Math.random() * canvas.width,
                 y: Math.random() * canvas.height,
-                vx: (Math.random() - 0.5) * 1,
-                vy: (Math.random() - 0.5) * 1,
-                size: Math.random() * 2 + 1,
-                color: `hsl(${Math.random() * 360}, 100%, 70%)`
+                vx: (Math.random() - 0.5) * 0.7,
+                vy: (Math.random() - 0.5) * 0.7,
+                size: Math.random() * 1.5 + 0.5,
+                // Store color as an object for easier manipulation
+                color: {
+                    r: Math.floor(Math.random() * 255),
+                    g: Math.floor(Math.random() * 255),
+                    b: Math.floor(Math.random() * 255)
+                }
             });
         }
     }
 
     function drawParticles() {
+        // Update particle positions
         particles.forEach(p => {
             p.x += p.vx;
             p.y += p.vy;
 
             if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
             if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+        });
 
-            ctx.fillStyle = p.color;
+        // Draw lines between nearby particles for a web/fractal effect
+        particles.forEach((p1, i) => {
+            // Find the 2 nearest neighbors
+            let neighbors = [];
+            for (let j = 0; j < particles.length; j++) {
+                if (i === j) continue;
+                const p2 = particles[j];
+                const dist = Math.sqrt((p1.x - p2.x)**2 + (p1.y - p2.y)**2);
+                neighbors.push({ particle: p2, dist: dist });
+            }
+
+            neighbors.sort((a, b) => a.dist - b.dist);
+
+            for (let k = 0; k < 2; k++) { // Connect to 2 nearest
+                const neighbor = neighbors[k];
+                // Only draw lines if they are reasonably close
+                if (neighbor.dist < 120) {
+                    ctx.beginPath();
+                    ctx.moveTo(p1.x, p1.y);
+                    ctx.lineTo(neighbor.particle.x, neighbor.particle.y);
+                    const alpha = 1 - (neighbor.dist / 120); // Fade with distance
+                    ctx.strokeStyle = `rgba(${p1.color.r}, ${p1.color.g}, ${p1.color.b}, ${alpha * 0.5})`;
+                    ctx.lineWidth = 0.75;
+                    ctx.stroke();
+                }
+            }
+
+            // Also draw the particle itself
+            ctx.fillStyle = `rgb(${p1.color.r}, ${p1.color.g}, ${p1.color.b})`;
             ctx.beginPath();
-            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.arc(p1.x, p1.y, p1.size, 0, Math.PI * 2);
             ctx.fill();
         });
     }
@@ -120,18 +165,38 @@ window.addEventListener('DOMContentLoaded', () => {
         }
 
         drawBody(x, y) {
-            ctx.fillStyle = `hsl(${(this.id * 90)}, 80%, 50%)`;
-            // Kimono (body)
             const bodyWidth = this.width * 0.8;
             const bodyHeight = this.height * 0.9;
-            ctx.fillRect(x - bodyWidth / 2, y, bodyWidth, bodyHeight);
+            const kimonoX = x - bodyWidth / 2;
+            const kimonoY = y;
 
-            // "Psychedelic patterns" on kimono
-            for (let i = 0; i < 5; i++) {
-                ctx.fillStyle = `hsl(${(this.id * 90 + i * 40) % 360}, 100%, 70%)`;
-                ctx.beginPath();
-                ctx.arc(x + (Math.random() - 0.5) * bodyWidth * 0.7, y + Math.random() * bodyHeight, Math.random() * 5 + 2, 0, Math.PI * 2);
-                ctx.fill();
+            // Kimono (body)
+            if (this.id === 1) {
+                ctx.fillStyle = '#1a1a1a'; // Dark grey/black for Gucci
+            } else {
+                ctx.fillStyle = `hsl(${(this.id * 90)}, 80%, 50%)`;
+            }
+            ctx.fillRect(kimonoX, kimonoY, bodyWidth, bodyHeight);
+
+            // "Psychedelic patterns" or Gucci logo
+            if (this.id === 1 && isGucciLogoLoaded) {
+                // Draw Gucci pattern
+                ctx.save();
+                ctx.rect(kimonoX, kimonoY, bodyWidth, bodyHeight);
+                ctx.clip(); // Clip to the kimono area
+                for (let row = -10; row < bodyHeight; row += 25) {
+                    for (let col = -20; col < bodyWidth; col += 55) {
+                        ctx.drawImage(gucciLogoImage, kimonoX + col, kimonoY + row);
+                    }
+                }
+                ctx.restore();
+            } else if (this.id !== 1) {
+                for (let i = 0; i < 5; i++) {
+                    ctx.fillStyle = `hsl(${(this.id * 90 + i * 40) % 360}, 100%, 70%)`;
+                    ctx.beginPath();
+                    ctx.arc(x + (Math.random() - 0.5) * bodyWidth * 0.7, y + Math.random() * bodyHeight, Math.random() * 5 + 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
             }
 
             // Clasped hands
@@ -239,14 +304,22 @@ window.addEventListener('DOMContentLoaded', () => {
             this.targetHeadSize = 2.0;
             this.targetMouthOpen = 1.0;
 
+            // Clear any existing timeout to prevent weird overlaps
+            if (this.deactivateTimeout) {
+                clearTimeout(this.deactivateTimeout);
+            }
+
             // Deactivate after 30 seconds
-            setTimeout(() => this.deactivate(), 30000);
+            this.deactivateTimeout = setTimeout(() => this.deactivate(), 30000);
         }
 
         deactivate() {
             this.isActive = false;
             this.targetHeadSize = 1.0;
             this.targetMouthOpen = 0.0;
+            if (this.deactivateTimeout) {
+                clearTimeout(this.deactivateTimeout);
+            }
         }
     }
 
@@ -374,6 +447,12 @@ window.addEventListener('DOMContentLoaded', () => {
                 if (playTime < now + duration) {
                     synth.play(noteFreq, playTime, noteLength);
                 }
+            }
+        }
+
+        stopCharacter(charId) {
+            if (this.synths[charId]) {
+                this.synths[charId].stop();
             }
         }
 
@@ -547,9 +626,10 @@ window.addEventListener('DOMContentLoaded', () => {
             panner.pan.setValueAtTime((Math.random() - 0.5) * 2, time);
 
             const gain = this.ctx.createGain();
+            const peakGain = 0.15 * 0.6; // 60% volume
             gain.gain.setValueAtTime(0, time);
-            gain.gain.linearRampToValueAtTime(0.15, time + 1.5); // Slow attack
-            gain.gain.setValueAtTime(0.15, time + duration - 2.0);
+            gain.gain.linearRampToValueAtTime(peakGain, time + 1.5); // Slow attack
+            gain.gain.setValueAtTime(peakGain, time + duration - 2.0);
             gain.gain.linearRampToValueAtTime(0, time + duration + 3.0); // Long release
 
             // Lowpass filter for occasional sweep
@@ -616,9 +696,10 @@ window.addEventListener('DOMContentLoaded', () => {
             gain.gain.setValueAtTime(0, time); // Start at 0 base gain
             lfoGain.connect(gain.gain); // LFO controls the gain value
 
+            const peakGain = 0.15 * 0.6; // 60% volume
             // Envelope on top
-            gain.gain.linearRampToValueAtTime(0.15, time + 0.5);
-            gain.gain.setValueAtTime(0.15, time + duration - 0.5);
+            gain.gain.linearRampToValueAtTime(peakGain, time + 0.5);
+            gain.gain.setValueAtTime(peakGain, time + duration - 0.5);
             gain.gain.linearRampToValueAtTime(0, time + duration);
 
             noise.connect(highpass);
@@ -671,16 +752,23 @@ window.addEventListener('DOMContentLoaded', () => {
         const y = event.clientY - rect.top;
 
         // Find which character was clicked
-        // Activate only one character per click to avoid chaos
         const clickedChar = characters.find(char => char.contains(x, y));
 
-        if (clickedChar && !clickedChar.isActive) {
-            console.log(`Character ${clickedChar.id} clicked!`);
-            // Activate visuals
-            clickedChar.activate();
-            // Activate audio
-            if (soundManager) {
-                soundManager.playCharacter(clickedChar.id);
+        if (clickedChar) {
+            if (!clickedChar.isActive) {
+                // Character is not active, so activate it.
+                console.log(`Activating character ${clickedChar.id}!`);
+                clickedChar.activate();
+                if (soundManager) {
+                    soundManager.playCharacter(clickedChar.id);
+                }
+            } else {
+                // Character is already active, so deactivate it.
+                console.log(`Deactivating character ${clickedChar.id}.`);
+                clickedChar.deactivate();
+                if (soundManager) {
+                    soundManager.stopCharacter(clickedChar.id);
+                }
             }
         }
     });
